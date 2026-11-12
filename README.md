@@ -231,6 +231,7 @@ python tests\onefile_check.py
 ```bat
 python promo\make_promo.py    :: 1080x1920 / 30fps / 30s 画面 + 封面
 python promo\make_music.py    :: 30s 配乐（Am-F-C-G 环境垫）
+python promo\make_cover.py    :: 封面图（两个版式）
 :: 合成带音轨的成片
 ffmpeg -i promo\deepseek-qq-promo-9x16-silent.mp4 -i promo\bgm.wav ^
        -c:v copy -c:a aac -b:a 160k -shortest promo\deepseek-qq-promo-9x16.mp4
