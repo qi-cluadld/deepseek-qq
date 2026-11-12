@@ -24,3 +24,9 @@ tests/firstrun/
 Thumbs.db
 desktop.ini
 .DS_Store
+
+# 宣传片产物（生成脚本入库，成品文件不入库）
+promo/*.mp4
+promo/*.wav
+promo/*.png
+promo/_frames/

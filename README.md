@@ -221,3 +221,28 @@ python tests\onefile_check.py
 - 两条后端的**收发链路**已用本地假服务端到端跑通（23/23 全过），包括消息解析、上下文、分条、异常兜底、官方网关鉴权与心跳。
 - 打包出的 `deepseek-qq.exe` 已实际启动并完成一次「收消息 → 调接口 → 回消息」。
 - **未验证**：真实 DeepSeek 接口调用与真实 QQ 收发（开发环境无外网、无 QQ 账号）。首次使用请按上面步骤实测；出问题看 `logs\bot.log`，里面记录了每次请求和错误原因。
+
+---
+
+## 十、宣传片
+
+`promo/` 下是 9:16 竖屏宣传片的生成脚本，画面和配乐全部程序化生成，不含任何第三方素材：
+
+```bat
+python promo\make_promo.py    :: 1080x1920 / 30fps / 30s 画面 + 封面
+python promo\make_music.py    :: 30s 配乐（Am-F-C-G 环境垫）
+:: 合成带音轨的成片
+ffmpeg -i promo\deepseek-qq-promo-9x16-silent.mp4 -i promo\bgm.wav ^
+       -c:v copy -c:a aac -b:a 160k -shortest promo\deepseek-qq-promo-9x16.mp4
+```
+
+改文案、换配色直接改 `make_promo.py` 里的常量重跑即可。
+
+---
+
+## 十一、许可证
+
+本项目基于 [MIT License](LICENSE) 开源，© 2026 qi-cluadld。
+
+你可以自由使用、修改、分发，甚至商用，保留版权声明即可。
+
