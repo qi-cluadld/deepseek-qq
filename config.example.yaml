@@ -1,0 +1,73 @@
+# ============================================================
+#  DeepSeek QQ 机器人 配置文件
+#  改完这个文件，重新运行 exe 即可生效
+# ============================================================
+
+# 用哪种方式接 QQ：
+#   onebot     —— NapCat / Lagrange / LLOneBot（普通 QQ 号，推荐）
+#   qqofficial —— QQ 开放平台的官方机器人（appid + secret）
+backend: onebot
+
+
+# ---------------------------- DeepSeek ----------------------------
+deepseek:
+  # 到 https://platform.deepseek.com/api_keys 申请，形如 sk-xxxxxxxx
+  # 也可以用环境变量 DEEPSEEK_API_KEY，避免明文写在这里
+  api_key: ""
+
+  base_url: "https://api.deepseek.com"
+  model: "deepseek-chat"        # deepseek-chat（通用） / deepseek-reasoner（推理）
+  temperature: 1.0
+  max_tokens: 2048
+  timeout: 60                   # 单次请求超时（秒）
+  retries: 2                    # 遇到 429/5xx 自动重试次数
+
+  # 机器人的说话风格。想让它更简短/更活泼，改这里
+  system_prompt: |
+    你是一个通过 QQ 聊天的 AI 助手。回答要简洁、口语化，
+    适合在手机屏幕上阅读：多用短句和分点，避免长篇大论，
+    不要输出 Markdown 表格和复杂格式。
+
+
+# ---------------------------- 对话行为 ----------------------------
+chat:
+  history_turns: 10             # 每个会话记住多少轮（1 轮 = 你一句 + 它一句）
+  session_ttl_minutes: 30       # 多久没聊就清空上下文
+  max_sessions: 500             # 最多同时维护多少个会话
+  cooldown_seconds: 1.5         # 同一个人两次提问的最小间隔
+  max_concurrent: 4             # 同时向 DeepSeek 发起的最大请求数
+  max_reply_chars: 1500         # 单条消息最大字数，超出自动拆成多条
+  busy_reply: "当前排队的人有点多，请稍等几秒再问~"
+  cooldown_reply: "问得太快啦，缓一缓再发~"
+  error_reply: "我这会儿有点故障（{reason}），稍后再试吧。"
+
+
+# ---------------------------- 方式一：OneBot ----------------------------
+# 需要先装 NapCat（或 Lagrange），并扫码登录一个 QQ 号。
+# NapCat 里的配置：网络配置 → 新建「WebSocket 服务器」（反向 WS）
+#   URL：ws://127.0.0.1:6700/onebot
+#   消息格式：array      Token：留空，或和下面 access_token 保持一致
+onebot:
+  host: "0.0.0.0"               # 只本机用就填 127.0.0.1 更安全
+  port: 6700                    # 别和 QQ / NapCat 的端口冲突
+  path: "/onebot"
+  access_token: ""              # 建议设一个随机串，防止别人连你的机器人
+
+  group_need_at: true           # 群里必须 @ 机器人才回复
+  group_prefix: "#"             # 没 @ 时，消息以 # 开头也能触发；填空则关闭
+  private_enabled: true         # 是否响应私聊
+
+
+# ---------------------------- 方式二：QQ 官方机器人 ----------------------------
+# 需要先去 https://q.qq.com 创建机器人，拿 appId 和 clientSecret。
+# 注意：官方机器人群聊必须 @，私聊需要在后台单独申请权限。
+qqofficial:
+  app_id: ""
+  client_secret: ""
+  sandbox: false                # 调试阶段可以设 true 走沙箱环境
+  intents: 1107296256           # 1<<25 群/C2C | 1<<30 频道@
+  # 一般不用改下面两个，测试时才需要指向本地假服务器
+  ws_url: ""
+  api_base: "https://api.sgroup.qq.com"
+  token_url: "https://bots.qq.com/app/getAppAccessToken"
+  max_reply_chars: 1800
