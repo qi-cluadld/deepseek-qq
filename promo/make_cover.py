@@ -115,48 +115,107 @@ def cover_b() -> Image.Image:
     return img.convert("RGB")
 
 
+# ---------------------------------------------------------------- 任意尺寸画布
+
+def build_assets(W: int, H: int, seed: int = 11):
+    """按尺寸生成背景 / 光晕 / 暗角。"""
+    import numpy as np
+
+    yy = np.linspace(0, 1, H)[:, None, None]
+    top = np.array(P.BG_TOP, dtype=np.float32)
+    bottom = np.array(P.BG_BOTTOM, dtype=np.float32)
+    arr = np.repeat(top * (1 - yy) + bottom * yy, W, axis=1)
+    base = Image.fromarray(arr.astype(np.uint8), "RGB").convert("RGBA")
+
+    grid = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(grid)
+    for x in range(0, W, 72):
+        gd.line([(x, 0), (x, H)], fill=(255, 255, 255, 7), width=1)
+    for y in range(0, H, 72):
+        gd.line([(0, y), (W, y)], fill=(255, 255, 255, 6), width=1)
+    base.alpha_composite(grid)
+
+    rng = np.random.default_rng(seed)
+    dots = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    dd = ImageDraw.Draw(dots)
+    for _ in range(int(W * H / 16000)):
+        x, y = int(rng.integers(0, W)), int(rng.integers(0, H))
+        r = int(rng.integers(1, 3))
+        dd.ellipse([x, y, x + r, y + r], fill=(255, 255, 255, int(rng.integers(18, 65))))
+    base.alpha_composite(dots)
+
+    yy2, xx2 = np.mgrid[0:H, 0:W].astype(np.float32)
+    nx = (xx2 - W / 2) / (W / 2)
+    ny = (yy2 - H / 2) / (H / 2)
+    dist = np.sqrt(nx ** 2 + ny ** 2) / 1.4142
+    alpha = (np.clip((dist - 0.55) / 0.45, 0, 1) ** 1.6 * 190).astype(np.uint8)
+    vig_arr = np.zeros((H, W, 4), dtype=np.uint8)
+    vig_arr[..., 3] = alpha
+    vignette = Image.fromarray(vig_arr, "RGBA")
+
+    glow_size = int(max(W, H) * 1.15)
+    return base, P.build_glow(glow_size, P.ACCENT), P.build_glow(glow_size, P.ACCENT2), vignette
+
+
 # ---------------------------------------------------------------- 16:10 横版
 
 WW, WH = 1920, 1200
 
 
 def build_wide_assets():
-    """16:10 画布的背景 / 光晕 / 暗角（尺寸不同，单独生成一次）。"""
-    import numpy as np
+    return build_assets(WW, WH, seed=11)
 
-    yy = np.linspace(0, 1, WH)[:, None, None]
-    top = np.array(P.BG_TOP, dtype=np.float32)
-    bottom = np.array(P.BG_BOTTOM, dtype=np.float32)
-    arr = np.repeat(top * (1 - yy) + bottom * yy, WW, axis=1)
-    base = Image.fromarray(arr.astype(np.uint8), "RGB").convert("RGBA")
 
-    grid = Image.new("RGBA", (WW, WH), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(grid)
-    for x in range(0, WW, 72):
-        gd.line([(x, 0), (x, WH)], fill=(255, 255, 255, 7), width=1)
-    for y in range(0, WH, 72):
-        gd.line([(0, y), (WW, y)], fill=(255, 255, 255, 6), width=1)
-    base.alpha_composite(grid)
+# ---------------------------------------------------------------- 3:4（视频号 / 抖音九宫格）
 
-    rng = np.random.default_rng(11)
-    dots = Image.new("RGBA", (WW, WH), (0, 0, 0, 0))
-    dd = ImageDraw.Draw(dots)
-    for _ in range(140):
-        x, y = int(rng.integers(0, WW)), int(rng.integers(0, WH))
-        r = int(rng.integers(1, 3))
-        dd.ellipse([x, y, x + r, y + r], fill=(255, 255, 255, int(rng.integers(18, 65))))
-    base.alpha_composite(dots)
+CW, CH = 1080, 1440
 
-    yy2, xx2 = np.mgrid[0:WH, 0:WW].astype(np.float32)
-    nx = (xx2 - WW / 2) / (WW / 2)
-    ny = (yy2 - WH / 2) / (WH / 2)
-    dd_ = np.sqrt(nx ** 2 + ny ** 2) / 1.4142
-    alpha = (np.clip((dd_ - 0.55) / 0.45, 0, 1) ** 1.6 * 190).astype(np.uint8)
-    vig_arr = np.zeros((WH, WW, 4), dtype=np.uint8)
-    vig_arr[..., 3] = alpha
-    vignette = Image.fromarray(vig_arr, "RGBA")
 
-    return base, P.build_glow(1700, P.ACCENT), P.build_glow(1500, P.ACCENT2), vignette
+def cover_34() -> Image.Image:
+    base, glow_b, glow_p, vignette = build_assets(CW, CH, seed=23)
+    img = base.copy()
+    P.blit(img, glow_b, -420, -520)
+    P.blit(img, glow_p, 380, 680)
+
+    ov = Image.new("RGBA", (CW, CH), (0, 0, 0, 0))
+    d = ImageDraw.Draw(ov)
+    cx = CW / 2
+
+    # 顶部标签
+    label = "开源 · 免费 · 5 分钟接入"
+    f = P.font(30, True)
+    tw = d.textlength(label, font=f)
+    d.rounded_rectangle([cx - (tw + 64) / 2, 236, cx + (tw + 64) / 2, 300], radius=32,
+                        fill=(255, 255, 255, 26), outline=(255, 255, 255, 70), width=2)
+    d.text((cx, 266), label, font=f, fill=(*P.WHITE, 255), anchor="mm")
+
+    # 标题
+    d.text((cx, 452), "把 DeepSeek", font=P.font(116, True), fill=(*P.WHITE, 255), anchor="mm")
+    d.text((cx, 584), "塞进 QQ", font=P.font(116, True), fill=(*P.WHITE, 255), anchor="mm")
+
+    # 高亮条
+    hl = "只要一个 EXE"
+    f2 = P.font(80, True)
+    hw = d.textlength(hl, font=f2)
+    bw, bh = hw + 96, 136
+    d.rounded_rectangle([cx - bw / 2, 700, cx + bw / 2, 700 + bh], radius=30,
+                        fill=(*P.ACCENT, 255))
+    d.text((cx, 700 + bh / 2 - 4), hl, font=f2, fill=(255, 255, 255, 255), anchor="mm")
+
+    d.text((cx, 928), "不用服务器 · 不用公网 IP · 不用装 Python",
+           font=P.font(33), fill=(*P.MUTED, 255), anchor="mm")
+
+    # 仓库地址：胶囊收底
+    url = "github.com/qi-cluadld/deepseek-qq"
+    fu = P.font(31, True)
+    uw = d.textlength(url, font=fu)
+    d.rounded_rectangle([cx - uw / 2 - 50, 1148, cx + uw / 2 + 50, 1238], radius=45,
+                        fill=(255, 255, 255, 14), outline=(*P.ACCENT, 150), width=2)
+    d.text((cx, 1192), url, font=fu, fill=(215, 224, 250, 245), anchor="mm")
+
+    img.alpha_composite(ov)
+    img.alpha_composite(vignette)
+    return img.convert("RGB")
 
 
 def cover_wide() -> Image.Image:
@@ -237,13 +296,18 @@ def main() -> int:
     b.save(OUT / "cover-B.png")
     w = cover_wide()
     w.save(OUT / "deepseek-qq-cover-16x10.png")
+    c = cover_34()
+    c.save(OUT / "deepseek-qq-cover-3x4.png")
     # 缩略图预览：模拟信息流里的小图，检查文字是否还看得清
     a.resize((270, 480), Image.LANCZOS).save(OUT / "_thumb_A.png")
     b.resize((270, 480), Image.LANCZOS).save(OUT / "_thumb_B.png")
     w.resize((480, 300), Image.LANCZOS).save(OUT / "_thumb_W.png")
+    # 视频号 6:7 显示裁切预览（上下各裁掉 90px）
+    c.crop((0, 90, CW, 1350)).resize((360, 420), Image.LANCZOS).save(OUT / "_thumb_67.png")
     print("cover A ->", OUT / "deepseek-qq-cover-9x16.png")
     print("cover B ->", OUT / "cover-B.png")
     print("cover W ->", OUT / "deepseek-qq-cover-16x10.png")
+    print("cover 3:4 ->", OUT / "deepseek-qq-cover-3x4.png")
     return 0
 
 

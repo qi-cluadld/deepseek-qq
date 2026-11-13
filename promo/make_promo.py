@@ -455,11 +455,14 @@ def render_frame(index: int) -> Image.Image:
 
 
 def main() -> int:
+    hq = "--hq" in sys.argv  # 高码率版，用于上传平台（视频号建议 ≥10Mbps）
     if FRAME_DIR.exists():
         shutil.rmtree(FRAME_DIR)
     FRAME_DIR.mkdir(parents=True)
 
-    print(f"渲染 {TOTAL} 帧（{W}x{H} @ {FPS}fps，{DUR:.0f}s）...")
+    video = OUT_DIR / ("deepseek-qq-promo-9x16-silent-hq.mp4" if hq else "deepseek-qq-promo-9x16.mp4")
+
+    print(f"渲染 {TOTAL} 帧（{W}x{H} @ {FPS}fps，{DUR:.0f}s）{' [HQ]' if hq else ''}...")
     for i in range(TOTAL):
         render_frame(i).save(FRAME_DIR / f"f{i:05d}.png", compress_level=1)
         if i % 90 == 0:
@@ -468,19 +471,24 @@ def main() -> int:
     ffmpeg = shutil.which("ffmpeg") or r"D:\ffmpeg-n9.0.2-37-gae19868753-win64-gpl-shared-9.0\ffmpeg-n9.0.2-37-gae19868753-win64-gpl-shared-9.0\bin\ffmpeg.exe"
     cmd = [
         ffmpeg, "-y", "-framerate", str(FPS), "-i", str(FRAME_DIR / "f%05d.png"),
-        "-c:v", "libx264", "-preset", "medium", "-crf", "20",
-        "-pix_fmt", "yuv420p", "-movflags", "+faststart",
-        "-r", str(FPS), str(VIDEO),
+        "-c:v", "libx264", "-preset", "slow" if hq else "medium",
+        "-crf", "14" if hq else "20",
     ]
+    if hq:
+        cmd += ["-maxrate", "16M", "-bufsize", "32M", "-profile:v", "high", "-level", "4.2"]
+    cmd += ["-pix_fmt", "yuv420p", "-movflags", "+faststart", "-r", str(FPS), str(video)]
     print("编码中...")
     subprocess.run(cmd, check=True, capture_output=True)
 
-    render_frame(int(11.2 * FPS)).save(POSTER)
+    if not hq:
+        render_frame(int(11.2 * FPS)).save(POSTER)
     shutil.rmtree(FRAME_DIR, ignore_errors=True)
 
-    size = VIDEO.stat().st_size / 1024 / 1024
-    print(f"完成：{VIDEO}（{size:.1f} MB）")
-    print(f"封面：{POSTER}")
+    size = video.stat().st_size / 1024 / 1024
+    mbps = video.stat().st_size * 8 / DUR / 1_000_000
+    print(f"完成：{video}（{size:.1f} MB，约 {mbps:.1f} Mbps）")
+    if not hq:
+        print(f"封面：{POSTER}")
     return 0
 
 
