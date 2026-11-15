@@ -3,6 +3,8 @@
 一个 `deepseek-qq.exe`，双击运行就能把 DeepSeek 挂到 QQ 上聊天。
 不需要 Python 环境、不需要服务器、不需要公网 IP。
 
+> **不想自己打包？** 直接下载：[最新版 Releases](https://github.com/qi-cluadld/deepseek-qq/releases/latest)
+
 - **两条都支持，改配置切换**：
   - `onebot` —— 通过 NapCat / Lagrange（普通 QQ 号，功能最全）
   - `qqofficial` —— 通过 QQ 开放平台官方机器人（appid + secret）
