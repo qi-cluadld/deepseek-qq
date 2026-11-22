@@ -1,0 +1,67 @@
+name: build-macos
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14   # Apple Silicon
+            arch: arm64
+            experimental: false
+          - runner: macos-13   # Intel
+            arch: x86_64
+            experimental: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: PyInstaller 打包
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile \
+            --name deepseek-qq \
+            --add-data "config.example.yaml:." \
+            --collect-data certifi \
+            --collect-submodules app \
+            --hidden-import aiohttp \
+            --hidden-import yaml \
+            --hidden-import certifi \
+            main.py
+
+      - name: 组装压缩包
+        run: |
+          cd dist
+          cp ../config.example.yaml .
+          cp ../start-mac.command .
+          chmod +x deepseek-qq start-mac.command
+          codesign --force --sign - deepseek-qq || true
+          zip -r "deepseek-qq-macos-${{ matrix.arch }}.zip" \
+            deepseek-qq config.example.yaml start-mac.command
+          ls -lh
+          "./deepseek-qq" --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: deepseek-qq-macos-${{ matrix.arch }}
+          path: dist/deepseek-qq-macos-${{ matrix.arch }}.zip
+          if-no-files-found: error

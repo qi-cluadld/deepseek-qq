@@ -74,6 +74,28 @@ QQ 端已连接（self_id=123456789 ...）
 
 群里默认必须 @ 才回复；不 @ 用 `#` 开头也能触发（可在配置里改）。
 
+### 5. macOS 用户
+
+到 [Releases](https://github.com/qi-cluadld/deepseek-qq/releases/latest) 下载对应版本：
+
+| 文件 | 适用机型 |
+| --- | --- |
+| `deepseek-qq-macos-arm64.zip` | Apple 芯片（M1/M2/M3/M4） |
+| `deepseek-qq-macos-x86_64.zip` | Intel 芯片 |
+
+解压后**第一次运行前**，打开「终端」，`cd` 到解压出来的文件夹，执行一次：
+
+```bash
+xattr -dr com.apple.quarantine . && chmod +x start-mac.command deepseek-qq
+```
+
+这一步是去掉 macOS 的隔离标记——程序没有做苹果公证签名（要每年 99 美元），不处理会被系统直接拦住提示「已损坏」。
+
+然后双击 `start-mac.command` 就能启动（会打开终端窗口显示日志），或者在终端里执行 `./deepseek-qq`。
+`config.yaml` 会在同目录自动生成，配置方式和 Windows 完全一样。
+
+想自己编译：`bash build_mac.sh`（需要 Python 3.10+ 和 Xcode 命令行工具 `xcode-select --install`）。
+
 ---
 
 ## 三、方式 B：QQ 官方机器人

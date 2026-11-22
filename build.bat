@@ -16,7 +16,7 @@ if exist dist rmdir /s /q dist
 if exist deepseek-qq.spec del /q deepseek-qq.spec
 
 echo [3/3] Building single-file exe...
-python -m PyInstaller --noconfirm --clean --onefile --console --name deepseek-qq --runtime-tmpdir "_rt" --add-data "config.example.yaml;." --collect-submodules app --hidden-import aiohttp --hidden-import yaml main.py
+python -m PyInstaller --noconfirm --clean --onefile --console --name deepseek-qq --runtime-tmpdir "_rt" --add-data "config.example.yaml;." --collect-data certifi --collect-submodules app --hidden-import aiohttp --hidden-import yaml --hidden-import certifi main.py
 if errorlevel 1 goto fail
 
 copy /y config.example.yaml dist\config.example.yaml >nul

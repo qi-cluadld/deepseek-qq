@@ -17,6 +17,7 @@ from typing import Any
 import aiohttp
 
 from .chat import ChatService, split_text
+from .net import make_ssl_context
 
 log = logging.getLogger("bot.qqofficial")
 
@@ -66,8 +67,10 @@ class QQOfficialBot:
                 "[官方机器人] 缺少 app_id / client_secret。\n"
                 "           去 https://q.qq.com 创建机器人 → 开发设置 里拿，填进 config.yaml。"
             )
+        ctx = make_ssl_context()
         self._session = aiohttp.ClientSession(
-            timeout=aiohttp.ClientTimeout(total=30)
+            connector=aiohttp.TCPConnector(ssl=ctx) if ctx is not None else None,
+            timeout=aiohttp.ClientTimeout(total=30),
         )
         log.info("QQ 官方机器人启动中：app_id=%s，环境=%s",
                  self.app_id, "沙箱" if self.sandbox else "正式")

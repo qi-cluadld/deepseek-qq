@@ -24,9 +24,11 @@ python -m PyInstaller `
     --name deepseek-qq `
     --runtime-tmpdir "_rt" `
     --add-data "config.example.yaml;." `
+    --collect-data certifi `
     --collect-submodules app `
     --hidden-import aiohttp `
     --hidden-import yaml `
+    --hidden-import certifi `
     main.py
 
 if ($LASTEXITCODE -ne 0) { throw "打包失败" }
