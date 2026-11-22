@@ -10,9 +10,19 @@ permissions:
 
 jobs:
   build:
-    name: macOS arm64
-    runs-on: macos-latest
-    timeout-minutes: 25
+    name: macOS ${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14   # Apple Silicon
+            arch: arm64
+            experimental: false
+          - runner: macos-13   # Intel
+            arch: x86_64
+            experimental: true
 
     steps:
       - uses: actions/checkout@v4
@@ -20,12 +30,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
-      - name: 环境信息
-        run: |
-          uname -m
-          sw_vers
-          python -V
 
       - name: 安装依赖
         run: |
@@ -51,13 +55,13 @@ jobs:
           cp ../start-mac.command .
           chmod +x deepseek-qq start-mac.command
           codesign --force --sign - deepseek-qq || true
-          ARCH="$(uname -m)"
-          zip -r "deepseek-qq-macos-${ARCH}.zip" deepseek-qq config.example.yaml start-mac.command
+          zip -r "deepseek-qq-macos-${{ matrix.arch }}.zip" \
+            deepseek-qq config.example.yaml start-mac.command
           ls -lh
-          ./deepseek-qq --version
+          "./deepseek-qq" --version
 
       - uses: actions/upload-artifact@v4
         with:
-          name: deepseek-qq-macos
-          path: dist/deepseek-qq-macos-*.zip
+          name: deepseek-qq-macos-${{ matrix.arch }}
+          path: dist/deepseek-qq-macos-${{ matrix.arch }}.zip
           if-no-files-found: error
