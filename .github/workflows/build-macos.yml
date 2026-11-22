@@ -2,27 +2,22 @@ name: build-macos
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "构建完上传到哪个 Release（例如 v1.2.0；留空则只保留 artifact）"
+        required: false
+        default: ""
   push:
     tags: ["v*"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
-    name: macOS ${{ matrix.arch }}
-    runs-on: ${{ matrix.runner }}
-    continue-on-error: ${{ matrix.experimental }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: macos-14   # Apple Silicon
-            arch: arm64
-            experimental: false
-          - runner: macos-13   # Intel
-            arch: x86_64
-            experimental: true
+    name: macOS arm64
+    runs-on: macos-latest
+    timeout-minutes: 25
 
     steps:
       - uses: actions/checkout@v4
@@ -30,6 +25,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
+      - name: 环境信息
+        run: |
+          uname -m
+          sw_vers
+          python -V
 
       - name: 安装依赖
         run: |
@@ -55,13 +56,34 @@ jobs:
           cp ../start-mac.command .
           chmod +x deepseek-qq start-mac.command
           codesign --force --sign - deepseek-qq || true
-          zip -r "deepseek-qq-macos-${{ matrix.arch }}.zip" \
-            deepseek-qq config.example.yaml start-mac.command
+          ARCH="$(uname -m)"
+          zip -r "deepseek-qq-macos-${ARCH}.zip" deepseek-qq config.example.yaml start-mac.command
           ls -lh
-          "./deepseek-qq" --version
+          ./deepseek-qq --version
 
-      - uses: actions/upload-artifact@v4
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: deepseek-qq-macos-${{ matrix.arch }}
-          path: dist/deepseek-qq-macos-${{ matrix.arch }}.zip
+          name: deepseek-qq-macos
+          path: dist/deepseek-qq-macos-*.zip
           if-no-files-found: error
+
+      # 打成 tag 时自动发到对应 Release；手动触发时填了 release_tag 也会发
+      - name: 上传到 Release
+        if: github.event_name == 'push' || inputs.release_tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "目标 Release：$TAG"
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::warning::Release $TAG 不存在，跳过上传（artifact 仍然可以手动下载）"
+            exit 0
+          fi
+          gh release upload "$TAG" dist/deepseek-qq-macos-*.zip \
+            --clobber --repo "$GITHUB_REPOSITORY"
+          echo "已上传："
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets \
+            --jq '.assets[] | "  \(.name)  \(.size) bytes"'
